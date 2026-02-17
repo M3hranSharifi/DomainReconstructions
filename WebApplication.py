@@ -646,7 +646,6 @@ def minmax_normalize_on_mask(F, mask):
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 inject_css()
 header_with_logo()
-show_team_floating()
 
 with st.sidebar:
     st.header("Welcome!")
@@ -1066,4 +1065,5 @@ if run_btn:
 
 else:
     st.error("Set Parameters, Then Click Build Masks and Report Metrics.")
+
 
