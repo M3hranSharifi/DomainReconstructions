@@ -1061,11 +1061,12 @@ if run_btn:
                 
         st.markdown(f"""
         Thank You for Using the CNN-Ready CFD Reconstruction Toolkit. If You Publish Any Results Obtained Using This Application, Please Do Cite Our Accompanying Paper:<br>
-        **“Benchmarking Distance-Based Masking and Adaptive α-Shape Methods for CNN-Ready Reconstruction of Arbitrary 2D CFD Flow Domains”**
+        **“Novel Distance-Based Masking and Adaptive α-Shape Methods for CNN-Ready Reconstruction of Arbitrary 2D CFD Flow Domains”**
         """, unsafe_allow_html=True)
 
 else:
     st.error("Set Parameters, Then Click Build Masks and Report Metrics.")
+
 
 
 
