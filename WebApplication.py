@@ -351,7 +351,7 @@ def header_with_logo():
                 <li><b>Supervision:</b> Prof. Gorka Sánchez Larraona and Prof. Alejandro Rivas Nieto</li>
                 <li><b>Developer:</b> Eng. Mehran Sharifi (PhD Candidate, Mechanical Engineering)</li>
                 <li><b>Timeframe:</b> September 2025 to February 2026</li>
-                <li><b>Contact Us:</b> msharifi@unav.es, gsanchez@unav.es, arivas@unav.es</li>
+                <li><b>Contact Us:</b> Msharifi@unav.es, Gsanchez@unav.es, Arivas@unav.es</li>
                 <hr style="margin: 20px 0 0 0; border: 0; border-top: 1px solid rgba(255,255,255,0.35);" />
               </ul>
             </div>
@@ -1066,6 +1066,7 @@ if run_btn:
 
 else:
     st.error("Set Parameters, Then Click Build Masks and Report Metrics.")
+
 
 
 
