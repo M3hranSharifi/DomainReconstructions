@@ -587,7 +587,18 @@ def pick_column(df, candidates):
 
 
 def plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title, x_pts=None, y_pts=None):
-    fig, ax = plt.subplots(figsize=(3, 2))
+    # ابعاد دامنه
+    x_span = max(float(xmax - xmin), 1e-12)
+    y_span = max(float(ymax - ymin), 1e-12)
+    ratio = x_span / y_span
+
+    # اندازه خودکار شکل با محدودیت منطقی
+    base_height = 4.5
+    fig_w = np.clip(base_height * ratio + 1.2, 4.5, 12.0)
+    fig_h = np.clip(fig_w / ratio, 3.5, 9.0)
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h), constrained_layout=True)
+
     cmap_f = plt.cm.rainbow.copy()
     cmap_f.set_bad(color="white")
 
@@ -596,8 +607,9 @@ def plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title, x_pts=None, y_pts
         origin="lower",
         extent=[xmin, xmax, ymin, ymax],
         cmap=cmap_f,
-        aspect="auto"
+        aspect="equal"   # برای حفظ نسبت واقعی هندسه
     )
+
     fig.colorbar(im, ax=ax, label="Value")
 
     if x_pts is not None and y_pts is not None:
@@ -605,7 +617,8 @@ def plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title, x_pts=None, y_pts
 
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
-    fig.tight_layout()
+    ax.set_title(title)
+
     return fig
 
 
