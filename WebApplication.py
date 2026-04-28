@@ -352,6 +352,7 @@ def header_with_logo():
                 <li><b>Developer:</b> Eng. Mehran Sharifi (PhD Candidate, Mechanical Engineering)</li>
                 <li><b>Timeframe:</b> September 2025 to February 2026</li>
                 <li><b>Contact Us:</b> Msharifi@unav.es, Gsanchez@unav.es, Arivas@unav.es</li>
+                <li><b>Acknowledgements=:</b> This application has been developed in the project MoReDigi (Desarrollo de Modelos Reducidos basados en la física para la Digitalización industrial) funded by the Government of the Basque Country through research grants ELKARTEK (KK-2024/00117).</li>
                 <hr style="margin: 20px 0 0 0; border: 0; border-top: 1px solid rgba(255,255,255,0.35);" />
               </ul>
             </div>
