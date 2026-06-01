@@ -1,3 +1,6 @@
+# ============================================================
+#               PYTHON PART (Main Application Logic)
+# ============================================================
 import time
 import io
 import os
@@ -19,6 +22,9 @@ from shapely.geometry import Polygon, MultiPolygon
 from shapely.affinity import scale as shp_scale
 
 
+# ============================================================
+#                      APP SETTINGS
+# ============================================================
 APP_TITLE = "CNN-Ready CFD Reconstruction Toolkit"
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -26,6 +32,9 @@ LOGO_PATH = BASE_DIR / "Logo.png"
 TEAM_DIR = BASE_DIR / "team"
 
 
+# ============================================================
+#                      UI & STYLING
+# ============================================================
 def _img_to_data_uri(img_path: Path) -> str:
     if not img_path.exists():
         return ""
@@ -42,6 +51,9 @@ def _img_to_data_uri(img_path: Path) -> str:
 
 
 def inject_css():
+    # ============================================================
+    #            CSS PART (Embedded within Python string)
+    # ============================================================
     st.markdown(
         """
         <style>
@@ -259,6 +271,9 @@ def header_with_logo():
     col_left, col_right = st.columns([6, 1.5], vertical_alignment="center")
 
     with col_left:
+        # ============================================================
+        #           HTML PART (Embedded within Python string)
+        # ============================================================
         st.markdown(f"<h1 style='margin: 0 0 6px 0;'>{APP_TITLE}</h1>", unsafe_allow_html=True)
     
         st.markdown(
@@ -292,6 +307,9 @@ def header_with_logo():
             st.caption(f"Expected at: {LOGO_PATH}")
 
 
+# ============================================================
+#                   PYTHON: DATA FORMATTING UTILITIES
+# ============================================================
 def _to_npy_bytes(arr):
     buf = io.BytesIO()
     np.save(buf, arr)
@@ -310,6 +328,9 @@ def _mask_csv_string(mask_u8):
     return s.getvalue()
 
 
+# ============================================================
+#                      PYTHON: GEOMETRY & GRIDS
+# ============================================================
 def build_grid(x, y, nx=500, ny=500, bounds=None):
     if bounds is None:
         xmin, xmax = float(np.min(x)), float(np.max(x))
@@ -410,6 +431,9 @@ def expand_polygon_coords(poly_coords, factor=1.0):
     return np.asarray(poly_expanded.exterior.coords, float)
 
 
+# ============================================================
+#                    PYTHON: METRICS & ASSESSMENT
+# ============================================================
 def compute_mask_stats(mask):
     mask = mask.astype(bool)
     _, num_cc = cc_label(mask)
@@ -455,6 +479,9 @@ def compare_to_reference(mask, ref_mask):
     return float(iou), float(precision), float(recall)
 
 
+# ============================================================
+#                  PYTHON: MASK GENERATION METHODS
+# ============================================================
 def mask_distance(points, Xg, Yg, threshold, closing_size, dist_map=None):
     if dist_map is None:
         tree = cKDTree(points)
@@ -506,6 +533,9 @@ def mask_alpha_lib(points, Xg, Yg, alpha_value, expand_factor=1.0):
     return mask_flat.reshape(Xg.shape)
 
 
+# ============================================================
+#               PYTHON: DATA PROCESSING & VISUALIZATION
+# ============================================================
 def pick_column(df, candidates):
     for c in candidates:
         if c in df.columns:
@@ -580,6 +610,9 @@ def minmax_normalize_on_mask(F, mask):
     return F_out, fmin, fmax
 
 
+# ============================================================
+#               PYTHON: STREAMLIT APP CONFIG & SIDEBAR
+# ============================================================
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 inject_css()
 header_with_logo()
@@ -588,6 +621,9 @@ with st.sidebar:
     st.header("Welcome!")
     uploaded = st.file_uploader("Upload Your Data File (ASCII Format)")
 
+    # ============================================================
+    #     HTML PART (Div markers injected via Python st.markdown)
+    # ============================================================
     st.markdown('<div class="sb-marker sb-marker-grid"></div>', unsafe_allow_html=True)
     with st.expander("CNN Grid Construction and Interpolation", expanded=False):
         st.markdown(r"**Grid Resolution in X** ($n_x$)")
@@ -605,7 +641,6 @@ with st.sidebar:
         mask_value_choice = st.selectbox("Outside-Mask Value", ["NaN", "-1.0"], index=1)
         mask_value = np.nan if mask_value_choice == "NaN" else -1.0
         st.caption("Note: Use NaN Mainly for Cleaner Plotting (Visualization).")
-
 
     st.markdown('<div class="sb-marker sb-marker-grid"></div>', unsafe_allow_html=True)    
     with st.expander("Normalization", expanded=False):
@@ -683,6 +718,9 @@ with st.sidebar:
     run_btn = st.button("Build Masks and Report Metrics", type="primary")
 
 
+# ============================================================
+#                  PYTHON: MAIN EXECUTION PIPELINE
+# ============================================================
 if uploaded is None:
     st.error("First Upload a File from the Sidebar.")
     st.stop()
@@ -691,7 +729,6 @@ df = read_uploaded_file(uploaded)
 
 st.subheader("Dataset Overview")
 st.dataframe(df.head(6), use_container_width=True)
-
 
 default_x = pick_column(df, ["x-coordinate", "x", "X", "x_coord", "xc"])
 default_y = pick_column(df, ["y-coordinate", "y", "Y", "y_coord", "yc"])
@@ -982,7 +1019,10 @@ if run_btn:
                     file_name=f"CNN-Ready Data_{method_name}.npz",
                     mime="application/octet-stream"
                 )
-                
+
+        # ============================================================
+        #      HTML PART (Embedded formatting within Python string)
+        # ============================================================
         st.markdown(f"""
         Thank You for Using the CNN-Ready CFD Reconstruction Toolkit. If You Publish Any Results Obtained Using This Application, Please Do Cite Our Accompanying Paper:<br>
         **“Novel Distance-Based Masking and Adaptive α-Shape Methods for CNN-Ready Reconstruction of Arbitrary 2D CFD Flow Domains”**
