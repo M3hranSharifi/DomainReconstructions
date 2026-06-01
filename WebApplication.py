@@ -1,8 +1,7 @@
-# WebApplication.py
-
 import time
 import io
 import os
+import base64
 from pathlib import Path
 
 import numpy as np
@@ -20,18 +19,10 @@ from shapely.geometry import Polygon, MultiPolygon
 from shapely.affinity import scale as shp_scale
 
 
-# ============================================================
-#                    APP SETTINGS
-# ============================================================
 APP_TITLE = "CNN-Ready CFD Reconstruction Toolkit"
 
 BASE_DIR = Path(__file__).resolve().parent
 LOGO_PATH = BASE_DIR / "Logo.png"
-
-import base64
-from pathlib import Path
-import streamlit as st
-
 TEAM_DIR = BASE_DIR / "team"
 
 
@@ -49,30 +40,21 @@ def _img_to_data_uri(img_path: Path) -> str:
     b64 = base64.b64encode(img_path.read_bytes()).decode("utf-8")
     return f"data:{mime};base64,{b64}"
 
-# ============================================================
-#                    CSS STYLING
-# ============================================================
+
 def inject_css():
     st.markdown(
         """
         <style>
-        /* =========================
-           Sidebar base
-           ========================= */
         [data-testid="stSidebar"] {
             background-color: #932636;
         }
 
-        /* Sidebar labels, headings, captions: white */
         [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
         [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
         [data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
             color: #ffffff !important;
         }
 
-        /* =========================
-           Inputs (number, text): light bg + black text
-           ========================= */
         [data-testid="stSidebar"] input,
         [data-testid="stSidebar"] textarea {
             background-color: rgba(255,255,255,0.92) !important;
@@ -80,7 +62,6 @@ def inject_css():
             border: 1px solid rgba(255,255,255,0.55) !important;
         }
 
-        /* Sidebar buttons (general) */
         [data-testid="stSidebar"] button {
             background-color: rgba(255,255,255,0.18) !important;
             color: #ffffff !important;
@@ -88,9 +69,6 @@ def inject_css():
             border-radius: 10px !important;
         }
 
-        /* =========================
-           Selectbox: light bg + black text (linear, NaN, ...)
-           ========================= */
         [data-testid="stSidebar"] [data-baseweb="select"] > div {
             background-color: rgba(255,255,255,0.92) !important;
             border: 1px solid rgba(255,255,255,0.55) !important;
@@ -99,7 +77,6 @@ def inject_css():
             color: #111111 !important;
         }
 
-        /* Dropdown menu (portal) */
         [data-baseweb="menu"] {
             background-color: rgba(255,255,255,0.98) !important;
         }
@@ -107,14 +84,10 @@ def inject_css():
             color: #111111 !important;
         }
 
-        /* Optional: hide caret inside selectbox */
         [data-testid="stSidebar"] [data-baseweb="select"] input {
             caret-color: transparent !important;
         }
 
-        /* =========================
-           File uploader dropzone: light bg + black text
-           ========================= */
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
             background-color: rgba(255,255,255,0.92) !important;
             border: 1px solid rgba(255,255,255,0.55) !important;
@@ -123,7 +96,6 @@ def inject_css():
             color: #111111 !important;
         }
 
-        /* Dropzone internal button (Browse files): black text */
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
             background-color: rgba(255,255,255,0.95) !important;
             color: #111111 !important;
@@ -134,9 +106,6 @@ def inject_css():
             color: #111111 !important;
         }
 
-        /* =========================
-           Uploaded file row (Data2 1.0MB): white text + icons not broken
-           ========================= */
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"]{
             color: #ffffff !important;
         }
@@ -144,7 +113,6 @@ def inject_css():
             color: #ffffff !important;
         }
 
-        /* Icons: avoid forcing fill on everything (prevents broken squares) */
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] svg{
             color: #ffffff !important;
         }
@@ -158,7 +126,6 @@ def inject_css():
             fill: currentColor !important;
         }
 
-        /* Remove button (X): override generic sidebar button styling */
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] button{
             background: transparent !important;
             border: 1px solid rgba(255,255,255,0.35) !important;
@@ -168,9 +135,6 @@ def inject_css():
             background: rgba(255,255,255,0.12) !important;
         }
 
-        /* =========================
-           Checkbox styling: match +/- button style
-           ========================= */
         [data-testid="stSidebar"] [data-baseweb="checkbox"] div[role="checkbox"]{
             border: 1px solid rgba(255,255,255,0.35) !important;
             border-radius: 6px !important;
@@ -189,140 +153,100 @@ def inject_css():
             color: #ffffff !important;
         }
         
-        /* =========================
-   Sidebar colored blocks (per section)
-   ========================= */
+        .sb-marker { display: none; }
 
-/* marker is invisible, فقط برای انتخاب CSS */
-.sb-marker { display: none; }
+        [data-testid="stSidebar"] [data-testid="stExpander"] details {
+          border-radius: 14px !important;
+          overflow: hidden !important;
+          border: 1px solid rgba(255,255,255,0.26) !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,0.14) !important;
+          background: transparent !important;
+        }
 
-/* expander base style (applies to all section blocks) */
-[data-testid="stSidebar"] [data-testid="stExpander"] details {
-  border-radius: 14px !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(255,255,255,0.26) !important;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.14) !important;
-}
+        [data-testid="stSidebar"] [data-testid="stExpander"] summary {
+          padding: 10px 12px !important;
+          font-weight: 800 !important;
+          letter-spacing: 0.2px !important;
+          color: #ffffff !important;
+        }
 
-/* expander header */
-[data-testid="stSidebar"] [data-testid="stExpander"] summary {
-  padding: 10px 12px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.2px !important;
-  color: #ffffff !important;
-}
+        [data-testid="stSidebar"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"]{
+          padding: 10px 12px 12px 12px !important;
+        }
 
-/* expander content */
-[data-testid="stSidebar"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"]{
-  padding: 10px 12px 12px 12px !important;
-}
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-grid) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-grid) + .element-container [data-testid="stExpander"] details {
+          background: rgba(46,160,214,0.22) !important;
+        }
 
-/* =========================
-   Color mapping using :has(marker) + next sibling expander
-   ========================= */
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-dist) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-dist) + .element-container [data-testid="stExpander"] details {
+          background: rgba(255,193,7,0.22) !important;
+        }
 
-/* CNN Grid Construction and Interpolation */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-grid) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-grid) + .element-container [data-testid="stExpander"] details {
-  background: rgba(46,160,214,0.22) !important;
-}
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-classic) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-classic) + .element-container [data-testid="stExpander"] details {
+          background: rgba(0,200,83,0.22) !important;
+        }
 
-/* Distance-Based Method */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-dist) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-dist) + .element-container [data-testid="stExpander"] details {
-  background: rgba(255,193,7,0.22) !important;
-}
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-adapt) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-adapt) + .element-container [data-testid="stExpander"] details {
+          background: rgba(156,39,176,0.22) !important;
+        }
 
-/* Classical Alpha-Shape Method */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-classic) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-classic) + .element-container [data-testid="stExpander"] details {
-  background: rgba(0,200,83,0.22) !important;
-}
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-sample) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-sample) + .element-container [data-testid="stExpander"] details {
+          background: rgba(255,87,34,0.22) !important;
+        }
 
-/* Adaptive Alpha-Shape Method */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-adapt) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-adapt) + .element-container [data-testid="stExpander"] details {
-  background: rgba(156,39,176,0.22) !important;
-}
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-inflate) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-inflate) + .element-container [data-testid="stExpander"] details {
+          background: rgba(96,125,139,0.26) !important;
+        }
 
-/* Alpha-Shapes Sampling Control */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-sample) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-sample) + .element-container [data-testid="stExpander"] details {
-  background: rgba(255,87,34,0.22) !important;
-}
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-gf) + .element-container [data-testid="stExpander"] summary,
+        [data-testid="stSidebar"] .element-container:has(.sb-marker-gf) + .element-container [data-testid="stExpander"] details {
+          background: rgba(233,30,99,0.22) !important;
+        }
 
-/* Boundary Inflation Refinement */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-inflate) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-inflate) + .element-container [data-testid="stExpander"] details {
-  background: rgba(96,125,139,0.26) !important;
-}
+        [data-testid="stSidebar"] [data-testid="stExpander"] details > summary{
+          padding: 10px 12px !important;
+          font-weight: 800 !important;
+          letter-spacing: 0.2px !important;
+          color: #ffffff !important;
+          background: var(--sb-head, rgba(255,255,255,0.10)) !important;
+        }
 
-/* Ghost Fraction (GF) Metric */
-[data-testid="stSidebar"] .element-container:has(.sb-marker-gf) + .element-container [data-testid="stExpander"] summary,
-[data-testid="stSidebar"] .element-container:has(.sb-marker-gf) + .element-container [data-testid="stExpander"] details {
-  background: rgba(233,30,99,0.22) !important;
-}
+        [data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary{
+          background: var(--sb-head, rgba(255,255,255,0.10)) !important;
+        }
 
-   /* =========================
-   Sidebar colored expanders (stable header color)
-   ========================= */
+        [data-testid="stSidebar"] [data-testid="stExpander"] details > summary:hover{
+          background: var(--sb-head, rgba(255,255,255,0.10)) !important;
+        }
 
-.sb-marker { display: none; }
+        [data-testid="stSidebar"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"]{
+          padding: 10px 12px 12px 12px !important;
+          background: var(--sb-body, rgba(255,255,255,0.06)) !important;
+        }
 
-/* expander container */
-[data-testid="stSidebar"] [data-testid="stExpander"] details{
-  border-radius: 14px !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(255,255,255,0.26) !important;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.14) !important;
-  background: transparent !important; /* مهم */
-}
+        .team-tooltip a{
+          color: #ffffff !important;
+          text-decoration: none !important;
+        }
+        .team-tooltip a:hover{
+          text-decoration: underline !important;
+        }
 
-/* header (summary) همیشه رنگ خودش را نگه دارد */
-[data-testid="stSidebar"] [data-testid="stExpander"] details > summary{
-  padding: 10px 12px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.2px !important;
-  color: #ffffff !important;
-  background: var(--sb-head, rgba(255,255,255,0.10)) !important;
-}
+        .team-tooltip{
+          pointer-events: none;
+          cursor: pointer;
+        }
 
-/* وقتی باز است هم همان رنگ بماند */
-[data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary{
-  background: var(--sb-head, rgba(255,255,255,0.10)) !important;
-}
-
-/* حالت hover هم رنگ را عوض نکند */
-[data-testid="stSidebar"] [data-testid="stExpander"] details > summary:hover{
-  background: var(--sb-head, rgba(255,255,255,0.10)) !important;
-}
-
-/* بدنه expander */
-[data-testid="stSidebar"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"]{
-  padding: 10px 12px 12px 12px !important;
-  background: var(--sb-body, rgba(255,255,255,0.06)) !important;
-}
-
-.team-tooltip a{
-  color: #ffffff !important;
-  text-decoration: none !important;
-}
-.team-tooltip a:hover{
-  text-decoration: underline !important;
-}
-
-/* tooltip پیش فرض کلیک نگیرد تا hover خراب نشود */
-.team-tooltip{
-  pointer-events: none;
-  cursor: pointer;
-}
-
-/* وقتی hover شد، کلیک فعال شود */
-.team-avatar-wrap:hover .team-tooltip{
-  pointer-events: auto;
-}
-    
-        /* Optional: hide menu/footer */
+        .team-avatar-wrap:hover .team-tooltip{
+          pointer-events: auto;
+        }
+            
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         </style>
@@ -367,23 +291,25 @@ def header_with_logo():
             st.caption("Logo not found")
             st.caption(f"Expected at: {LOGO_PATH}")
 
+
 def _to_npy_bytes(arr):
     buf = io.BytesIO()
     np.save(buf, arr)
     return buf.getvalue()
+
 
 def _to_npz_bytes(**kwargs):
     buf = io.BytesIO()
     np.savez_compressed(buf, **kwargs)
     return buf.getvalue()
 
+
 def _mask_csv_string(mask_u8):
     s = io.StringIO()
     np.savetxt(s, mask_u8, fmt="%d", delimiter=",")
     return s.getvalue()
-# ============================================================
-#                 COMMON HELPER FUNCTIONS
-# ============================================================
+
+
 def build_grid(x, y, nx=500, ny=500, bounds=None):
     if bounds is None:
         xmin, xmax = float(np.min(x)), float(np.max(x))
@@ -588,12 +514,10 @@ def pick_column(df, candidates):
 
 
 def plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title, x_pts=None, y_pts=None):
-    # ابعاد دامنه
     x_span = max(float(xmax - xmin), 1e-12)
     y_span = max(float(ymax - ymin), 1e-12)
     ratio = x_span / y_span
 
-    # اندازه خودکار شکل با محدودیت منطقی
     base_height = 4.5
     fig_w = np.clip(base_height * ratio + 1.2, 4.5, 12.0)
     fig_h = np.clip(fig_w / ratio, 3.5, 9.0)
@@ -608,7 +532,7 @@ def plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title, x_pts=None, y_pts
         origin="lower",
         extent=[xmin, xmax, ymin, ymax],
         cmap=cmap_f,
-        aspect="equal"   # برای حفظ نسبت واقعی هندسه
+        aspect="equal"
     )
 
     fig.colorbar(im, ax=ax, label="Value")
@@ -626,7 +550,7 @@ def plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title, x_pts=None, y_pts
 def read_uploaded_file(uploaded_file):
     raw_bytes = uploaded_file.getvalue()
     try:
-        return pd.read_csv(io.BytesIO(raw_bytes), sep=r"\s+", engine="python", comment="#")
+        return pd.read_csv(io.BytesIO(raw_bytes), sep=r"\s+", engine="python")
     except Exception:
         return pd.read_csv(io.BytesIO(raw_bytes))
 
@@ -634,8 +558,8 @@ def read_uploaded_file(uploaded_file):
 def interpolate_field(points, Xg, Yg, values, method):
     return griddata(points, values, (Xg, Yg), method=method)
 
-def minmax_normalize_on_mask(F, mask):
 
+def minmax_normalize_on_mask(F, mask):
     F = np.asarray(F, dtype=float)
     mask = mask.astype(bool)
 
@@ -655,9 +579,7 @@ def minmax_normalize_on_mask(F, mask):
     F_out[valid] = (F_out[valid] - fmin) / denom
     return F_out, fmin, fmax
 
-# ============================================================
-#                       STREAMLIT APP
-# ============================================================
+
 st.set_page_config(page_title=APP_TITLE, layout="wide")
 inject_css()
 header_with_logo()
@@ -668,13 +590,13 @@ with st.sidebar:
 
     st.markdown('<div class="sb-marker sb-marker-grid"></div>', unsafe_allow_html=True)
     with st.expander("CNN Grid Construction and Interpolation", expanded=False):
-        st.markdown(r"**Grid Resolution in X**  ($n_x$)")
+        st.markdown(r"**Grid Resolution in X** ($n_x$)")
         nx = st.number_input(
         "nx", min_value=1, max_value=1_000_000, value=1000, step=1,
         key="nx", label_visibility="collapsed"
         )
 
-        st.markdown(r"**Grid Resolution in Y**  ($n_y$)")
+        st.markdown(r"**Grid Resolution in Y** ($n_y$)")
         ny = st.number_input(
         "ny", min_value=1, max_value=1_000_000, value=1000, step=1,
         key="ny", label_visibility="collapsed"
@@ -684,7 +606,7 @@ with st.sidebar:
         mask_value = np.nan if mask_value_choice == "NaN" else -1.0
         st.caption("Note: Use NaN Mainly for Cleaner Plotting (Visualization).")
 
-    
+
     st.markdown('<div class="sb-marker sb-marker-grid"></div>', unsafe_allow_html=True)    
     with st.expander("Normalization", expanded=False):
         field_postproc = st.radio("Field Processing",["Interpolation Only (Keep Original Scale)", "Normalize Values Inside Mask (0–1)"],index=0)
@@ -694,7 +616,7 @@ with st.sidebar:
     st.markdown('<div class="sb-marker sb-marker-dist"></div>', unsafe_allow_html=True)
     with st.expander("Distance-Based Method", expanded=False):
 
-        st.markdown(r"**Threshold Parameter**  ($\tau$)")
+        st.markdown(r"**Threshold Parameter** ($\tau$)")
         distance_threshold = st.number_input(
         "tau", min_value=0.0, value=0.01, step=0.0000001, format="%.6f",
         key="distance_threshold", label_visibility="collapsed"
@@ -702,7 +624,7 @@ with st.sidebar:
 
         st.caption(r"Note: Setting $\tau=\min(\Delta x,\Delta y)$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
 
-        st.markdown(r"**Structuring Element Size**  ($s$)")
+        st.markdown(r"**Structuring Element Size** ($s$)")
         closing_size = st.number_input(
         "s", min_value=1, max_value=1000000, value=3, step=1,
         key="closing_size", label_visibility="collapsed"
@@ -712,7 +634,7 @@ with st.sidebar:
 
     st.markdown('<div class="sb-marker sb-marker-classic"></div>', unsafe_allow_html=True)
     with st.expander("Classical Alpha-Shape Method", expanded=False):
-        st.markdown(r"**Classical Alpha-Shape Parameter**  ($\alpha$)")
+        st.markdown(r"**Classical Alpha-Shape Parameter** ($\alpha$)")
         alpha_value_lib = st.number_input(
         "alpha", min_value=0.0001, value=10.0, step=0.000001, format="%.6f",
         key="alpha_value_lib", label_visibility="collapsed"
@@ -721,7 +643,7 @@ with st.sidebar:
 
     st.markdown('<div class="sb-marker sb-marker-adapt"></div>', unsafe_allow_html=True)
     with st.expander("Adaptive Alpha-Shape Method", expanded=False):
-        st.markdown(r"**Adaptive Alpha-Shape Parameter**  ($\beta$)")
+        st.markdown(r"**Adaptive Alpha-Shape Parameter** ($\beta$)")
         alpha_factor_custom = st.number_input(
         "beta", min_value=0.0001, value=1.0, step=0.000001, format="%.6f",
         key="alpha_factor_custom", label_visibility="collapsed"
@@ -736,7 +658,7 @@ with st.sidebar:
         
     st.markdown('<div class="sb-marker sb-marker-inflate"></div>', unsafe_allow_html=True)
     with st.expander("Boundary Inflation Refinement", expanded=False):
-        st.markdown(r"**Boundary Expansion Factor**  ($\eta$)")
+        st.markdown(r"**Boundary Expansion Factor** ($\eta$)")
         poly_expand_factor = st.number_input(
         "beta_b", min_value=1.0, value=1.0000, step=0.0001, format="%.4f",
         key="poly_expand_factor", label_visibility="collapsed"
@@ -746,7 +668,7 @@ with st.sidebar:
         
     st.markdown('<div class="sb-marker sb-marker-gf"></div>', unsafe_allow_html=True)
     with st.expander("Ghost Fraction (GF) Metric", expanded=False):
-        st.markdown(r"**Reference Radius Factor**  ($\rho$)")
+        st.markdown(r"**Reference Radius Factor** ($\rho$)")
         r0_factor = st.number_input(
         "rho", min_value=0.0001, value=1.0, step=0.0001, format="%.4f",
         key="r0_factor", label_visibility="collapsed"
@@ -770,7 +692,7 @@ df = read_uploaded_file(uploaded)
 st.subheader("Dataset Overview")
 st.dataframe(df.head(6), use_container_width=True)
 
-# Coordinate columns
+
 default_x = pick_column(df, ["x-coordinate", "x", "X", "x_coord", "xc"])
 default_y = pick_column(df, ["y-coordinate", "y", "Y", "y_coord", "yc"])
 
@@ -796,7 +718,7 @@ x = df[x_col].to_numpy(float)
 y = df[y_col].to_numpy(float)
 points_all = np.column_stack([x, y])
 
-# Field selection (multi)
+
 st.subheader("Output Fields")
 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
 field_candidates = [c for c in numeric_cols if c not in [x_col, y_col]]
@@ -825,7 +747,7 @@ if field_mode == "Use Physical Fields from Data":
 else:
     selected_fields = ["__ONES__"]
 
-# Subsample points for alpha methods
+
 rng = np.random.default_rng(0)
 if max_poly_points and max_poly_points > 0 and len(points_all) > max_poly_points:
     idx = rng.choice(len(points_all), size=int(max_poly_points), replace=False)
@@ -836,26 +758,21 @@ else:
 if run_btn:
     with st.spinner("Running Reconstruction Pipeline. Please Wait...."):
 
-        # -------------------------
-        # Shared pipeline timing (common for all methods)
-        # -------------------------
         t_shared0 = time.perf_counter()
 
-        # Grid
         Xg, Yg, xmin, xmax, ymin, ymax = build_grid(x, y, nx=int(nx), ny=int(ny))
 
-        # Distance map
         tree = cKDTree(points_all)
         grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
         dist_to_pts, _ = tree.query(grid_points, k=1)
         dist_map = dist_to_pts.reshape(Xg.shape)
 
-        # r0
+
         dists_pts, _ = tree.query(points_all, k=2)
         mean_nn_dist = float(np.mean(dists_pts[:, 1]))
         r0 = float(r0_factor * mean_nn_dist)
 
-        # Build selected field grids (interpolation or constant ones)
+
         field_grids = {}
         if field_mode == "Use Constant Unit Field (Mask and Geometry Only)":
             field_grids["__ONES__"] = np.ones_like(Xg, dtype=float)
@@ -873,9 +790,7 @@ if run_btn:
         - **Shared Preprocessing Time (CNN Grid Generation, Distance Map Computation, Reference Radius Calculation, Interpolation):** {shared_time:.4f} s
         """)
 
-        # -------------------------
-        # Build masks (mask-only time)
-        # -------------------------
+
         results = {}
 
         if run_distance:
@@ -900,13 +815,10 @@ if run_btn:
             st.error("No Method Selected.")
             st.stop()
 
-        # Reference mask for IoU metrics
+
         ref_mask = results["Classical Alpha-Shape"]["mask"] if "Classical Alpha-Shape" in results else None
 
-        # -------------------------
-        # Per-method postprocess timing:
-        # metrics + building export artifacts (NPY/CSV/NPZ + masked fields)
-        # -------------------------
+
         rows = []
         for name, res in results.items():
             t_post0 = time.perf_counter()
@@ -914,7 +826,7 @@ if run_btn:
             mask = res["mask"].astype(bool)
             mask_u8 = mask.astype(np.uint8)
 
-            # metrics
+
             stats = compute_mask_stats(mask)
             pr = point_recall(mask, x, y, xmin, xmax, ymin, ymax, int(nx), int(ny))
             gf, extra_cells = ghost_fraction(mask, dist_map, r0)
@@ -924,15 +836,15 @@ if run_btn:
             else:
                 iou, prec, rec = compare_to_reference(mask, ref_mask)
 
-            # prepare exports once (so UI part does not recompute)
+
             exports = {}
             exports["mask_u8"] = mask_u8
             exports["mask_npy"] = _to_npy_bytes(mask_u8)
             exports["mask_csv"] = _mask_csv_string(mask_u8)
 
-            # masked fields (reuse for NPZ + plotting + per-field NPY)
+
             masked_fields = {}
-            norm_info = {}  # optional
+            norm_info = {}
 
             if field_mode == "Use Constant Unit Field (Mask and Geometry Only)":
                 F0 = field_grids["__ONES__"]
@@ -957,7 +869,7 @@ if run_btn:
             exports["masked_fields"] = masked_fields
             exports["masked_field_npy"] = {k: _to_npy_bytes(v) for k, v in masked_fields.items()}
 
-            # NPZ pack
+
             pack = {
                 "Xg": Xg.astype(np.float64),
                 "Yg": Yg.astype(np.float64),
@@ -1011,9 +923,7 @@ if run_btn:
             mime="text/csv"
         )
 
-        # ------------------------------------------------------------
-        # Visual and downloads (now reusing precomputed exports)
-        # ------------------------------------------------------------
+
         st.subheader("Reconstruction Outcomes")
         method_names = list(results.keys())
         method_tabs = st.tabs(method_names)
@@ -1040,7 +950,7 @@ if run_btn:
                     mime="text/csv"
                 )
 
-                # field tabs
+
                 field_display_names = ["ones"] if field_mode == "Use Constant Unit Field (Mask and Geometry Only)" else selected_fields
                 field_tabs = st.tabs(field_display_names)
 
@@ -1080,8 +990,3 @@ if run_btn:
 
 else:
     st.error("Set Parameters, Then Click Build Masks and Report Metrics.")
-
-
-
-
-
