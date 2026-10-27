@@ -452,8 +452,8 @@ def compare_to_reference(mask, ref_mask):
     recall = inter_count / r_count if r_count > 0 else np.nan
     return float(iou), float(precision), float(recall)
 
-def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_custom, alpha_lib, runs=5):
-    """Run repeated tests across different data sizes for scalability analysis (Reviewer #7)"""
+def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_custom, alpha_lib, runs=3):
+    """Run repeated tests across different data sizes for scalability analysis (Reviewer #7) & return DataFrame + Figure"""
     fractions = [0.2, 0.4, 0.6, 0.8, 1.0]
     sizes = []
     
@@ -462,11 +462,11 @@ def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_cus
     times_alpha_l = {"mean": [], "std": []}
     
     for frac in fractions:
-        n_samples = max(4, int(len(points) * frac)) # Ensure at least 4 points
+        n_samples = max(4, int(len(points) * frac))
         sizes.append(n_samples)
         pts_subset = points[:n_samples]
         
-        # Distance-Based Timing (Includes KD-Tree as per reviewer request)
+        # Distance-Based Timing
         dist_runs = []
         for _ in range(runs):
             t0 = time.perf_counter()
@@ -481,7 +481,7 @@ def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_cus
         times_dist["mean"].append(np.mean(dist_runs))
         times_dist["std"].append(np.std(dist_runs))
         
-        # Adaptive Alpha-Shape Timing (Includes Delaunay and Rasterization)
+        # Adaptive Alpha-Shape Timing
         alpha_c_runs = []
         for _ in range(runs):
             t0 = time.perf_counter()
@@ -501,6 +501,18 @@ def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_cus
         times_alpha_l["mean"].append(np.mean(alpha_l_runs))
         times_alpha_l["std"].append(np.std(alpha_l_runs))
 
+    # ساخت جدول داده‌های بنچمارک برای دانلود CSV
+    benchmark_data = {
+        "Input_Points_N": sizes,
+        "Distance_Based_Mean_Time_s": times_dist["mean"],
+        "Distance_Based_Std_Time_s": times_dist["std"],
+        "Adaptive_Alpha_Mean_Time_s": times_alpha_c["mean"],
+        "Adaptive_Alpha_Std_Time_s": times_alpha_c["std"],
+        "Classical_Alpha_Mean_Time_s": times_alpha_l["mean"],
+        "Classical_Alpha_Std_Time_s": times_alpha_l["std"]
+    }
+    bench_df = pd.DataFrame(benchmark_data)
+
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.errorbar(sizes, times_dist["mean"], yerr=times_dist["std"], fmt='-o', label='Distance-Based', capsize=5)
     ax.errorbar(sizes, times_alpha_c["mean"], yerr=times_alpha_c["std"], fmt='-s', label='Adaptive \u03b1-Shape', capsize=5)
@@ -513,7 +525,7 @@ def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_cus
     ax.legend()
     ax.set_yscale('log')
     
-    return fig
+    return fig, bench_df
 
 
 # ============================================================
@@ -658,7 +670,6 @@ with st.sidebar:
     st.header("Welcome!")
     uploaded = st.file_uploader("Upload Your Data File (ASCII Format)")
 
-    # Environment Log for Reviewers
     sys_info = get_system_info()
     st.markdown("### Environment (For Peer Review)")
     for k, v in sys_info.items():
@@ -790,23 +801,33 @@ else:
 if run_btn:
     with st.spinner("Running Reconstruction Pipeline. Please Wait...."):
 
-        # Feature for Reviewer 7: Scalability Benchmark (Runs isolated component timings)
+        # Scalability Benchmark با قابلیت دانلود CSV مربوط به داده‌های نمودار
         with st.expander("Scalability Benchmark (Reviewer Requirement)", expanded=True):
             st.info("Running repeated benchmarks across different input sizes. This isolates all operations (KD-Tree, Delaunay, Rasterization, Morphological closing) per method.")
-            fig_scale = run_scalability_benchmark(
-                points_all, Xg=build_grid(x, y, nx=int(nx), ny=int(ny))[0], Yg=build_grid(x, y, nx=int(nx), ny=int(ny))[1], 
+            
+            temp_Xg, temp_Yg, _, _, _, _ = build_grid(x, y, nx=int(nx), ny=int(ny))
+            fig_scale, bench_df = run_scalability_benchmark(
+                points_all, Xg=temp_Xg, Yg=temp_Yg, 
                 threshold=distance_threshold, closing_size=int(closing_size), 
-                alpha_custom=alpha_factor_custom, alpha_lib=alpha_value_lib, runs=5
+                alpha_custom=alpha_factor_custom, alpha_lib=alpha_value_lib, runs=3
             )
             st.pyplot(fig_scale)
+            
+            # افزودن دکمه دانلود CSV داده‌های نمودار مقیاس‌پذیری
+            bench_csv = bench_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download Scalability Benchmark Data (.CSV)",
+                data=bench_csv,
+                file_name="Scalability_Benchmark_Data.csv",
+                mime="text/csv"
+            )
+            
             st.caption(f"Hardware/Software Context: {sys_info['OS']} | {sys_info['Processor']} | Grid: {nx}x{ny} | Total Points: {len(points_all)}")
 
         t_shared0 = time.perf_counter()
 
         Xg, Yg, xmin, xmax, ymin, ymax = build_grid(x, y, nx=int(nx), ny=int(ny))
 
-        # We construct KDTree here to compute GF reference radius and share the map, 
-        # but we explicitly time it for the Distance-Based method's mask time.
         t_tree0 = time.perf_counter()
         tree = cKDTree(points_all)
         grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
@@ -827,7 +848,7 @@ if run_btn:
                 field_grids[col] = interpolate_field(points_all, Xg, Yg, vals, interp_method)
 
         t_shared1 = time.perf_counter()
-        shared_time = (t_shared1 - t_shared0) - time_kdtree  # Deduct KDTree time from shared
+        shared_time = (t_shared1 - t_shared0) - time_kdtree
         
         st.markdown(fr"""
         - **Mean NN Distance ($\overline{{d^{{NN}}}}$):** {mean_nn_dist:.6g} m
@@ -841,7 +862,6 @@ if run_btn:
             t0 = time.perf_counter()
             m = mask_distance(points_all, Xg, Yg, distance_threshold, int(closing_size), dist_map=dist_map)
             t1 = time.perf_counter()
-            # Include KD-Tree indexing time in the distance-based method as requested by the reviewer
             results["Distance-Based"] = {"mask": m, "time_mask": (t1 - t0) + time_kdtree}
 
         if run_alpha_lib:
