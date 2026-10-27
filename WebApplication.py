@@ -5,12 +5,16 @@ import time
 import io
 import os
 import base64
+import platform
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+import scipy
+import shapely
 
 from matplotlib.path import Path as MplPath
 from scipy.interpolate import griddata
@@ -21,6 +25,17 @@ import alphashape
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.affinity import scale as shp_scale
 
+
+def get_system_info():
+    """Extract hardware and software specifications for peer-review reporting"""
+    return {
+        "OS": f"{platform.system()} {platform.release()}",
+        "Processor": platform.processor(),
+        "Python": sys.version.split()[0],
+        "SciPy": scipy.__version__,
+        "Shapely": shapely.__version__,
+        "Alphashape": alphashape.__version__
+    }
 
 # ============================================================
 #                      APP SETTINGS
@@ -51,36 +66,29 @@ def _img_to_data_uri(img_path: Path) -> str:
 
 
 def inject_css():
-    # ============================================================
-    #            CSS PART (Embedded within Python string)
-    # ============================================================
     st.markdown(
         """
         <style>
         [data-testid="stSidebar"] {
             background-color: #932636;
         }
-
         [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
         [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
         [data-testid="stSidebar"] [data-testid="stCaptionContainer"] * {
             color: #ffffff !important;
         }
-
         [data-testid="stSidebar"] input,
         [data-testid="stSidebar"] textarea {
             background-color: rgba(255,255,255,0.92) !important;
             color: #111111 !important;
             border: 1px solid rgba(255,255,255,0.55) !important;
         }
-
         [data-testid="stSidebar"] button {
             background-color: rgba(255,255,255,0.18) !important;
             color: #ffffff !important;
             border: 1px solid rgba(255,255,255,0.35) !important;
             border-radius: 10px !important;
         }
-
         [data-testid="stSidebar"] [data-baseweb="select"] > div {
             background-color: rgba(255,255,255,0.92) !important;
             border: 1px solid rgba(255,255,255,0.55) !important;
@@ -88,18 +96,15 @@ def inject_css():
         [data-testid="stSidebar"] [data-baseweb="select"] * {
             color: #111111 !important;
         }
-
         [data-baseweb="menu"] {
             background-color: rgba(255,255,255,0.98) !important;
         }
         [data-baseweb="menu"] * {
             color: #111111 !important;
         }
-
         [data-testid="stSidebar"] [data-baseweb="select"] input {
             caret-color: transparent !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
             background-color: rgba(255,255,255,0.92) !important;
             border: 1px solid rgba(255,255,255,0.55) !important;
@@ -107,7 +112,6 @@ def inject_css():
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] * {
             color: #111111 !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
             background-color: rgba(255,255,255,0.95) !important;
             color: #111111 !important;
@@ -117,14 +121,12 @@ def inject_css():
         [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button * {
             color: #111111 !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"]{
             color: #ffffff !important;
         }
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] *{
             color: #ffffff !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] svg{
             color: #ffffff !important;
         }
@@ -137,7 +139,6 @@ def inject_css():
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] svg *[fill]:not([fill="none"]){
             fill: currentColor !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] button{
             background: transparent !important;
             border: 1px solid rgba(255,255,255,0.35) !important;
@@ -146,7 +147,6 @@ def inject_css():
         [data-testid="stSidebar"] [data-testid="stFileUploaderFile"] button:hover{
             background: rgba(255,255,255,0.12) !important;
         }
-
         [data-testid="stSidebar"] [data-baseweb="checkbox"] div[role="checkbox"]{
             border: 1px solid rgba(255,255,255,0.35) !important;
             border-radius: 6px !important;
@@ -166,7 +166,6 @@ def inject_css():
         }
         
         .sb-marker { display: none; }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] details {
           border-radius: 14px !important;
           overflow: hidden !important;
@@ -174,53 +173,43 @@ def inject_css():
           box-shadow: 0 10px 24px rgba(0,0,0,0.14) !important;
           background: transparent !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] summary {
           padding: 10px 12px !important;
           font-weight: 800 !important;
           letter-spacing: 0.2px !important;
           color: #ffffff !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"]{
           padding: 10px 12px 12px 12px !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-grid) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-grid) + .element-container [data-testid="stExpander"] details {
           background: rgba(46,160,214,0.22) !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-dist) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-dist) + .element-container [data-testid="stExpander"] details {
           background: rgba(255,193,7,0.22) !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-classic) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-classic) + .element-container [data-testid="stExpander"] details {
           background: rgba(0,200,83,0.22) !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-adapt) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-adapt) + .element-container [data-testid="stExpander"] details {
           background: rgba(156,39,176,0.22) !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-sample) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-sample) + .element-container [data-testid="stExpander"] details {
           background: rgba(255,87,34,0.22) !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-inflate) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-inflate) + .element-container [data-testid="stExpander"] details {
           background: rgba(96,125,139,0.26) !important;
         }
-
         [data-testid="stSidebar"] .element-container:has(.sb-marker-gf) + .element-container [data-testid="stExpander"] summary,
         [data-testid="stSidebar"] .element-container:has(.sb-marker-gf) + .element-container [data-testid="stExpander"] details {
           background: rgba(233,30,99,0.22) !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] details > summary{
           padding: 10px 12px !important;
           font-weight: 800 !important;
@@ -228,20 +217,16 @@ def inject_css():
           color: #ffffff !important;
           background: var(--sb-head, rgba(255,255,255,0.10)) !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] details[open] > summary{
           background: var(--sb-head, rgba(255,255,255,0.10)) !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] details > summary:hover{
           background: var(--sb-head, rgba(255,255,255,0.10)) !important;
         }
-
         [data-testid="stSidebar"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"]{
           padding: 10px 12px 12px 12px !important;
           background: var(--sb-body, rgba(255,255,255,0.06)) !important;
         }
-
         .team-tooltip a{
           color: #ffffff !important;
           text-decoration: none !important;
@@ -249,16 +234,13 @@ def inject_css():
         .team-tooltip a:hover{
           text-decoration: underline !important;
         }
-
         .team-tooltip{
           pointer-events: none;
           cursor: pointer;
         }
-
         .team-avatar-wrap:hover .team-tooltip{
           pointer-events: auto;
         }
-            
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         </style>
@@ -271,20 +253,12 @@ def header_with_logo():
     col_left, col_right = st.columns([6, 1.5], vertical_alignment="center")
 
     with col_left:
-        # ============================================================
-        #           HTML PART (Embedded within Python string)
-        # ============================================================
         st.markdown(f"<h1 style='margin: 0 0 6px 0;'>{APP_TITLE}</h1>", unsafe_allow_html=True)
     
         st.markdown(
             """
             <div style="margin-top: 2px;">
-              <ul style="
-                  margin: 0;
-                  padding-left: 18px;
-                  line-height: 1.15;
-                  font-size: 0.9rem;
-                ">
+              <ul style="margin: 0; padding-left: 18px; line-height: 1.15; font-size: 0.9rem;">
                 <li><b>Developed at:</b> TECNUN (School of Engineering), University of Navarra, San Sebastián, Spain</li>
                 <li><b>Research group:</b> TFED, Thermal and Fluids</li>
                 <li><b>Supervision:</b> Prof. Gorka Sánchez Larraona and Prof. Alejandro Rivas Nieto</li>
@@ -478,6 +452,69 @@ def compare_to_reference(mask, ref_mask):
     recall = inter_count / r_count if r_count > 0 else np.nan
     return float(iou), float(precision), float(recall)
 
+def run_scalability_benchmark(points, Xg, Yg, threshold, closing_size, alpha_custom, alpha_lib, runs=5):
+    """Run repeated tests across different data sizes for scalability analysis (Reviewer #7)"""
+    fractions = [0.2, 0.4, 0.6, 0.8, 1.0]
+    sizes = []
+    
+    times_dist = {"mean": [], "std": []}
+    times_alpha_c = {"mean": [], "std": []}
+    times_alpha_l = {"mean": [], "std": []}
+    
+    for frac in fractions:
+        n_samples = max(4, int(len(points) * frac)) # Ensure at least 4 points
+        sizes.append(n_samples)
+        pts_subset = points[:n_samples]
+        
+        # Distance-Based Timing (Includes KD-Tree as per reviewer request)
+        dist_runs = []
+        for _ in range(runs):
+            t0 = time.perf_counter()
+            tree = cKDTree(pts_subset)
+            grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
+            dist_map_local, _ = tree.query(grid_points, k=1)
+            dist_map_local = dist_map_local.reshape(Xg.shape)
+            mask = dist_map_local < threshold
+            binary_closing(mask, structure=np.ones((closing_size, closing_size)))
+            dist_runs.append(time.perf_counter() - t0)
+            
+        times_dist["mean"].append(np.mean(dist_runs))
+        times_dist["std"].append(np.std(dist_runs))
+        
+        # Adaptive Alpha-Shape Timing (Includes Delaunay and Rasterization)
+        alpha_c_runs = []
+        for _ in range(runs):
+            t0 = time.perf_counter()
+            mask_alpha_custom(pts_subset, Xg, Yg, alpha_custom, 1.0)
+            alpha_c_runs.append(time.perf_counter() - t0)
+            
+        times_alpha_c["mean"].append(np.mean(alpha_c_runs))
+        times_alpha_c["std"].append(np.std(alpha_c_runs))
+        
+        # Classical Alpha-Shape Timing
+        alpha_l_runs = []
+        for _ in range(runs):
+            t0 = time.perf_counter()
+            mask_alpha_lib(pts_subset, Xg, Yg, alpha_lib, 1.0)
+            alpha_l_runs.append(time.perf_counter() - t0)
+            
+        times_alpha_l["mean"].append(np.mean(alpha_l_runs))
+        times_alpha_l["std"].append(np.std(alpha_l_runs))
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.errorbar(sizes, times_dist["mean"], yerr=times_dist["std"], fmt='-o', label='Distance-Based', capsize=5)
+    ax.errorbar(sizes, times_alpha_c["mean"], yerr=times_alpha_c["std"], fmt='-s', label='Adaptive \u03b1-Shape', capsize=5)
+    ax.errorbar(sizes, times_alpha_l["mean"], yerr=times_alpha_l["std"], fmt='-^', label='Classical \u03b1-Shape', capsize=5)
+    
+    ax.set_xlabel('Number of Input Data Points (N)')
+    ax.set_ylabel(f'Total Execution Time (s) - Mean of {runs} runs')
+    ax.set_title('Computational Scalability (Runtime vs. Input Size)')
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.legend()
+    ax.set_yscale('log')
+    
+    return fig
+
 
 # ============================================================
 #                  PYTHON: MASK GENERATION METHODS
@@ -621,22 +658,18 @@ with st.sidebar:
     st.header("Welcome!")
     uploaded = st.file_uploader("Upload Your Data File (ASCII Format)")
 
-    # ============================================================
-    #     HTML PART (Div markers injected via Python st.markdown)
-    # ============================================================
+    # Environment Log for Reviewers
+    sys_info = get_system_info()
+    st.markdown("### Environment (For Peer Review)")
+    for k, v in sys_info.items():
+        st.caption(f"**{k}:** {v}")
+
     st.markdown('<div class="sb-marker sb-marker-grid"></div>', unsafe_allow_html=True)
     with st.expander("CNN Grid Construction and Interpolation", expanded=False):
         st.markdown(r"**Grid Resolution in X** ($n_x$)")
-        nx = st.number_input(
-        "nx", min_value=1, max_value=1_000_000, value=1000, step=1,
-        key="nx", label_visibility="collapsed"
-        )
-
+        nx = st.number_input("nx", min_value=1, max_value=1_000_000, value=1000, step=1, key="nx", label_visibility="collapsed")
         st.markdown(r"**Grid Resolution in Y** ($n_y$)")
-        ny = st.number_input(
-        "ny", min_value=1, max_value=1_000_000, value=1000, step=1,
-        key="ny", label_visibility="collapsed"
-        )
+        ny = st.number_input("ny", min_value=1, max_value=1_000_000, value=1000, step=1, key="ny", label_visibility="collapsed")
         interp_method = st.selectbox("Interpolation Method", ["linear", "nearest", "cubic"], index=0)
         mask_value_choice = st.selectbox("Outside-Mask Value", ["NaN", "-1.0"], index=1)
         mask_value = np.nan if mask_value_choice == "NaN" else -1.0
@@ -650,40 +683,23 @@ with st.sidebar:
 
     st.markdown('<div class="sb-marker sb-marker-dist"></div>', unsafe_allow_html=True)
     with st.expander("Distance-Based Method", expanded=False):
-
         st.markdown(r"**Threshold Parameter** ($\tau$)")
-        distance_threshold = st.number_input(
-        "tau", min_value=0.0, value=0.01, step=0.0000001, format="%.6f",
-        key="distance_threshold", label_visibility="collapsed"
-        )
-
+        distance_threshold = st.number_input("tau", min_value=0.0, value=0.01, step=0.0000001, format="%.6f", key="distance_threshold", label_visibility="collapsed")
         st.caption(r"Note: Setting $\tau=\min(\Delta x,\Delta y)$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
-
         st.markdown(r"**Structuring Element Size** ($s$)")
-        closing_size = st.number_input(
-        "s", min_value=1, max_value=1000000, value=3, step=1,
-        key="closing_size", label_visibility="collapsed"
-        )
-
+        closing_size = st.number_input("s", min_value=1, max_value=1000000, value=3, step=1, key="closing_size", label_visibility="collapsed")
         st.caption("Note: The Default Value s=3 Is Effective for Most Geometries. Changing s Is Generally Unnecessary Unless the Mask Becomes Perforated.")
 
     st.markdown('<div class="sb-marker sb-marker-classic"></div>', unsafe_allow_html=True)
     with st.expander("Classical Alpha-Shape Method", expanded=False):
         st.markdown(r"**Classical Alpha-Shape Parameter** ($\alpha$)")
-        alpha_value_lib = st.number_input(
-        "alpha", min_value=0.0001, value=10.0, step=0.000001, format="%.6f",
-        key="alpha_value_lib", label_visibility="collapsed"
-        )
+        alpha_value_lib = st.number_input("alpha", min_value=0.0001, value=10.0, step=0.000001, format="%.6f", key="alpha_value_lib", label_visibility="collapsed")
         st.caption("Note: The α Value Is Strongly Geometry-Dependent and Typically Requires Tuning.")
 
     st.markdown('<div class="sb-marker sb-marker-adapt"></div>', unsafe_allow_html=True)
     with st.expander("Adaptive Alpha-Shape Method", expanded=False):
         st.markdown(r"**Adaptive Alpha-Shape Parameter** ($\beta$)")
-        alpha_factor_custom = st.number_input(
-        "beta", min_value=0.0001, value=1.0, step=0.000001, format="%.6f",
-        key="alpha_factor_custom", label_visibility="collapsed"
-        )
-
+        alpha_factor_custom = st.number_input("beta", min_value=0.0001, value=1.0, step=0.000001, format="%.6f", key="alpha_factor_custom", label_visibility="collapsed")
         st.caption(r"Note: $\beta=1$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
 
     st.markdown('<div class="sb-marker sb-marker-sample"></div>', unsafe_allow_html=True)
@@ -694,20 +710,13 @@ with st.sidebar:
     st.markdown('<div class="sb-marker sb-marker-inflate"></div>', unsafe_allow_html=True)
     with st.expander("Boundary Inflation Refinement", expanded=False):
         st.markdown(r"**Boundary Expansion Factor** ($\eta$)")
-        poly_expand_factor = st.number_input(
-        "beta_b", min_value=1.0, value=1.0000, step=0.0001, format="%.4f",
-        key="poly_expand_factor", label_visibility="collapsed"
-        )
+        poly_expand_factor = st.number_input("beta_b", min_value=1.0, value=1.0000, step=0.0001, format="%.4f", key="poly_expand_factor", label_visibility="collapsed")
         st.caption("Note: Setting $\eta$ to Values Greater Than 1 Is Recommended When Points Near the Boundaries Remain Uncovered.")
 
-        
     st.markdown('<div class="sb-marker sb-marker-gf"></div>', unsafe_allow_html=True)
     with st.expander("Ghost Fraction (GF) Metric", expanded=False):
         st.markdown(r"**Reference Radius Factor** ($\rho$)")
-        r0_factor = st.number_input(
-        "rho", min_value=0.0001, value=1.0, step=0.0001, format="%.4f",
-        key="r0_factor", label_visibility="collapsed"
-        )
+        r0_factor = st.number_input("rho", min_value=0.0001, value=1.0, step=0.0001, format="%.4f", key="r0_factor", label_visibility="collapsed")
         st.caption("Note: $\\rho=1$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
 
     run_distance = st.checkbox("Distance-Based Mask", value=False)
@@ -735,17 +744,9 @@ default_y = pick_column(df, ["y-coordinate", "y", "Y", "y_coord", "yc"])
 
 c1, c2, c3 = st.columns([1.2, 1.2, 1])
 with c1:
-    x_col = st.selectbox(
-        "X Column",
-        df.columns.tolist(),
-        index=df.columns.get_loc(default_x) if default_x in df.columns else 0
-    )
+    x_col = st.selectbox("X Column", df.columns.tolist(), index=df.columns.get_loc(default_x) if default_x in df.columns else 0)
 with c2:
-    y_col = st.selectbox(
-        "Y Column",
-        df.columns.tolist(),
-        index=df.columns.get_loc(default_y) if default_y in df.columns else min(1, len(df.columns) - 1)
-    )
+    y_col = st.selectbox("Y Column", df.columns.tolist(), index=df.columns.get_loc(default_y) if default_y in df.columns else min(1, len(df.columns) - 1))
 with c3:
     st.write("")
     st.write("")
@@ -772,18 +773,12 @@ if field_mode == "Use Physical Fields from Data":
     if len(field_candidates) == 0:
         st.error("No Physical Field Columns Found Besides X and Y. Switch to Constant Unit Field.")
         st.stop()
-
-    selected_fields = st.multiselect(
-        "Select One or More Fields",
-        options=field_candidates,
-        default=[field_candidates[0]]
-    )
+    selected_fields = st.multiselect("Select One or More Fields", options=field_candidates, default=[field_candidates[0]])
     if len(selected_fields) == 0:
         st.error("Select at Least One Field or Switch to Constant Unit Field.")
         st.stop()
 else:
     selected_fields = ["__ONES__"]
-
 
 rng = np.random.default_rng(0)
 if max_poly_points and max_poly_points > 0 and len(points_all) > max_poly_points:
@@ -795,20 +790,33 @@ else:
 if run_btn:
     with st.spinner("Running Reconstruction Pipeline. Please Wait...."):
 
+        # Feature for Reviewer 7: Scalability Benchmark (Runs isolated component timings)
+        with st.expander("Scalability Benchmark (Reviewer Requirement)", expanded=True):
+            st.info("Running repeated benchmarks across different input sizes. This isolates all operations (KD-Tree, Delaunay, Rasterization, Morphological closing) per method.")
+            fig_scale = run_scalability_benchmark(
+                points_all, Xg=build_grid(x, y, nx=int(nx), ny=int(ny))[0], Yg=build_grid(x, y, nx=int(nx), ny=int(ny))[1], 
+                threshold=distance_threshold, closing_size=int(closing_size), 
+                alpha_custom=alpha_factor_custom, alpha_lib=alpha_value_lib, runs=5
+            )
+            st.pyplot(fig_scale)
+            st.caption(f"Hardware/Software Context: {sys_info['OS']} | {sys_info['Processor']} | Grid: {nx}x{ny} | Total Points: {len(points_all)}")
+
         t_shared0 = time.perf_counter()
 
         Xg, Yg, xmin, xmax, ymin, ymax = build_grid(x, y, nx=int(nx), ny=int(ny))
 
+        # We construct KDTree here to compute GF reference radius and share the map, 
+        # but we explicitly time it for the Distance-Based method's mask time.
+        t_tree0 = time.perf_counter()
         tree = cKDTree(points_all)
         grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
         dist_to_pts, _ = tree.query(grid_points, k=1)
         dist_map = dist_to_pts.reshape(Xg.shape)
-
+        time_kdtree = time.perf_counter() - t_tree0
 
         dists_pts, _ = tree.query(points_all, k=2)
         mean_nn_dist = float(np.mean(dists_pts[:, 1]))
         r0 = float(r0_factor * mean_nn_dist)
-
 
         field_grids = {}
         if field_mode == "Use Constant Unit Field (Mask and Geometry Only)":
@@ -819,14 +827,13 @@ if run_btn:
                 field_grids[col] = interpolate_field(points_all, Xg, Yg, vals, interp_method)
 
         t_shared1 = time.perf_counter()
-        shared_time = t_shared1 - t_shared0
+        shared_time = (t_shared1 - t_shared0) - time_kdtree  # Deduct KDTree time from shared
         
         st.markdown(fr"""
         - **Mean NN Distance ($\overline{{d^{{NN}}}}$):** {mean_nn_dist:.6g} m
         - **Reference Radius ($r_0$):** {r0:.6g} m
-        - **Shared Preprocessing Time (CNN Grid Generation, Distance Map Computation, Reference Radius Calculation, Interpolation):** {shared_time:.4f} s
+        - **Shared Preprocessing Time (CNN Grid, Ref Radius, Interpolation):** {shared_time:.4f} s
         """)
-
 
         results = {}
 
@@ -834,7 +841,8 @@ if run_btn:
             t0 = time.perf_counter()
             m = mask_distance(points_all, Xg, Yg, distance_threshold, int(closing_size), dist_map=dist_map)
             t1 = time.perf_counter()
-            results["Distance-Based"] = {"mask": m, "time_mask": t1 - t0}
+            # Include KD-Tree indexing time in the distance-based method as requested by the reviewer
+            results["Distance-Based"] = {"mask": m, "time_mask": (t1 - t0) + time_kdtree}
 
         if run_alpha_lib:
             t0 = time.perf_counter()
@@ -852,9 +860,7 @@ if run_btn:
             st.error("No Method Selected.")
             st.stop()
 
-
         ref_mask = results["Classical Alpha-Shape"]["mask"] if "Classical Alpha-Shape" in results else None
-
 
         rows = []
         for name, res in results.items():
@@ -862,7 +868,6 @@ if run_btn:
 
             mask = res["mask"].astype(bool)
             mask_u8 = mask.astype(np.uint8)
-
 
             stats = compute_mask_stats(mask)
             pr = point_recall(mask, x, y, xmin, xmax, ymin, ymax, int(nx), int(ny))
@@ -873,12 +878,10 @@ if run_btn:
             else:
                 iou, prec, rec = compare_to_reference(mask, ref_mask)
 
-
             exports = {}
             exports["mask_u8"] = mask_u8
             exports["mask_npy"] = _to_npy_bytes(mask_u8)
             exports["mask_csv"] = _mask_csv_string(mask_u8)
-
 
             masked_fields = {}
             norm_info = {}
@@ -891,7 +894,6 @@ if run_btn:
             else:
                 for col in selected_fields:
                     F0 = field_grids[col]
-
                     if do_normalize:
                         F0n, fmin, fmax = minmax_normalize_on_mask(F0, mask)
                         norm_info[col] = (fmin, fmax)
@@ -905,7 +907,6 @@ if run_btn:
 
             exports["masked_fields"] = masked_fields
             exports["masked_field_npy"] = {k: _to_npy_bytes(v) for k, v in masked_fields.items()}
-
 
             pack = {
                 "Xg": Xg.astype(np.float64),
@@ -947,7 +948,7 @@ if run_btn:
         st.dataframe(summary_df, use_container_width=True)
 
         st.markdown("""
-        - **Mask Time** Refers Only to the Time Required to Generate the Mask.
+        - **Mask Time** strictly includes KD-Tree indexing, nearest-neighbor querying, thresholding, and morphological operations (for Distance-Based) and Delaunay triangulation & rasterization (for Alpha Shapes).
         - **Processing Time** Includes Reconstruction Assessment Metrics, Masking Fields, Normalization, and Preparation of All Export Files.
         - **Total Time** Is the Sum of Shared Preprocessing Time, Mask Time, and Processing Time.
         """)
@@ -960,7 +961,6 @@ if run_btn:
             mime="text/csv"
         )
 
-
         st.subheader("Reconstruction Outcomes")
         method_names = list(results.keys())
         method_tabs = st.tabs(method_names)
@@ -972,21 +972,8 @@ if run_btn:
                 mask = mask_u8.astype(bool)
 
                 st.markdown("#### Generated Mask")
-
-                st.download_button(
-                    label=f"Export Mask (.NPY) [{method_name}]",
-                    data=ex["mask_npy"],
-                    file_name=f"Mask_{method_name}.npy",
-                    mime="application/octet-stream"
-                )
-
-                st.download_button(
-                    label=f"Export Mask (.CSV) [{method_name}]",
-                    data=ex["mask_csv"],
-                    file_name=f"Mask_{method_name}.csv",
-                    mime="text/csv"
-                )
-
+                st.download_button(label=f"Export Mask (.NPY) [{method_name}]", data=ex["mask_npy"], file_name=f"Mask_{method_name}.npy", mime="application/octet-stream")
+                st.download_button(label=f"Export Mask (.CSV) [{method_name}]", data=ex["mask_csv"], file_name=f"Mask_{method_name}.csv", mime="text/csv")
 
                 field_display_names = ["ones"] if field_mode == "Use Constant Unit Field (Mask and Geometry Only)" else selected_fields
                 field_tabs = st.tabs(field_display_names)
@@ -996,33 +983,15 @@ if run_btn:
                         key = "ones" if field_mode == "Use Constant Unit Field (Mask and Geometry Only)" else field_name
                         F_masked = ex["masked_fields"][key]
 
-                        fig = plot_masked_field(
-                            F_masked, xmin, xmax, ymin, ymax,
-                            title=f"{method_name} | field: {key}",
-                            x_pts=x if show_points else None,
-                            y_pts=y if show_points else None
-                        )
+                        fig = plot_masked_field(F_masked, xmin, xmax, ymin, ymax, title=f"{method_name} | field: {key}", x_pts=x if show_points else None, y_pts=y if show_points else None)
                         st.pyplot(fig, clear_figure=True, use_container_width=False)
 
                         st.markdown("#### Masked Field")
-                        st.download_button(
-                            label=f"Export Masked Field (.NPY) [{method_name}]",
-                            data=ex["masked_field_npy"][key],
-                            file_name=f"Masked Field_{key}_{method_name}.npy",
-                            mime="application/octet-stream"
-                        )
+                        st.download_button(label=f"Export Masked Field (.NPY) [{method_name}]", data=ex["masked_field_npy"][key], file_name=f"Masked Field_{key}_{method_name}.npy", mime="application/octet-stream")
 
                 st.markdown("#### CNN-Ready Data (X, Y, Generated Mask, Masked Fields)")
-                st.download_button(
-                    label=f"Export CNN-Ready Data (.NPZ) [{method_name}]",
-                    data=ex["npz"],
-                    file_name=f"CNN-Ready Data_{method_name}.npz",
-                    mime="application/octet-stream"
-                )
+                st.download_button(label=f"Export CNN-Ready Data (.NPZ) [{method_name}]", data=ex["npz"], file_name=f"CNN-Ready Data_{method_name}.npz", mime="application/octet-stream")
 
-        # ============================================================
-        #      HTML PART (Embedded formatting within Python string)
-        # ============================================================
         st.markdown(f"""
         Thank You for Using the CNN-Ready CFD Reconstruction Toolkit. If You Publish Any Results Obtained Using This Application, Please Do Cite Our Accompanying Paper:<br>
         **“Novel Distance-Based Masking and Adaptive α-Shape Methods for CNN-Ready Reconstruction of Arbitrary 2D CFD Flow Domains”**
