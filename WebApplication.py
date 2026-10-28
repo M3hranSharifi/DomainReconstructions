@@ -482,22 +482,12 @@ def compare_to_reference(mask, ref_mask):
 # ============================================================
 #                  PYTHON: MASK GENERATION METHODS
 # ============================================================
-def mask_distance(points, Xg, Yg, threshold, closing_size, formulation="Standard Euclidean (D)", dx=1.0, dy=1.0, dist_map=None):
+def mask_distance(points, Xg, Yg, threshold, closing_size, dist_map=None):
     if dist_map is None:
+        tree = cKDTree(points)
         grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
-        if formulation == "Normalized Anisotropic (Dan)":
-            # Scale points and grid points by dx and dy to incorporate anisotropic grid spacings (Eq. 12)
-            dx_safe = dx if dx > 0 else 1.0
-            dy_safe = dy if dy > 0 else 1.0
-            points_scaled = points / np.array([dx_safe, dy_safe])
-            grid_scaled = grid_points / np.array([dx_safe, dy_safe])
-            tree_scaled = cKDTree(points_scaled)
-            dist, _ = tree_scaled.query(grid_scaled, k=1)
-            dist_map_local = dist.reshape(Xg.shape)
-        else:
-            tree = cKDTree(points)
-            dist, _ = tree.query(grid_points, k=1)
-            dist_map_local = dist.reshape(Xg.shape)
+        dist, _ = tree.query(grid_points, k=1)
+        dist_map_local = dist.reshape(Xg.shape)
     else:
         dist_map_local = dist_map
 
@@ -660,23 +650,14 @@ with st.sidebar:
 
     st.markdown('<div class="sb-marker sb-marker-dist"></div>', unsafe_allow_html=True)
     with st.expander("Distance-Based Method", expanded=False):
-        dist_formulation = st.selectbox(
-            "Distance Formulation",
-            ["Standard Euclidean (D)", "Normalized Anisotropic (Dan)"],
-            index=0
-        )
 
         st.markdown(r"**Threshold Parameter** ($\tau$)")
-        default_tau = 1.0 if dist_formulation == "Normalized Anisotropic (Dan)" else 0.01
         distance_threshold = st.number_input(
-        "tau", min_value=0.0, value=default_tau, step=0.0000001, format="%.6f",
+        "tau", min_value=0.0, value=0.01, step=0.0000001, format="%.6f",
         key="distance_threshold", label_visibility="collapsed"
         )
 
-        if dist_formulation == "Normalized Anisotropic (Dan)":
-            st.caption("Note: For the normalized anisotropic formulation, a practical default of $\tau=1$ forms an elliptical boundary that adapts to grid resolution.")
-        else:
-            st.caption(r"Note: Setting $\tau=\min(\Delta x,\Delta y)$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
+        st.caption(r"Note: Setting $\tau=\min(\Delta x,\Delta y)$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
 
         st.markdown(r"**Structuring Element Size** ($s$)")
         closing_size = st.number_input(
@@ -818,10 +799,6 @@ if run_btn:
 
         Xg, Yg, xmin, xmax, ymin, ymax = build_grid(x, y, nx=int(nx), ny=int(ny))
 
-        # Calculate grid spacings dx and dy for anisotropic distance
-        dx_grid = float(Xg[0, 1] - Xg[0, 0]) if Xg.shape[1] > 1 else 1.0
-        dy_grid = float(Yg[1, 0] - Yg[0, 0]) if Yg.shape[0] > 1 else 1.0
-
         tree = cKDTree(points_all)
         grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
         dist_to_pts, _ = tree.query(grid_points, k=1)
@@ -855,10 +832,7 @@ if run_btn:
 
         if run_distance:
             t0 = time.perf_counter()
-            m = mask_distance(
-                points_all, Xg, Yg, distance_threshold, int(closing_size), 
-                formulation=dist_formulation, dx=dx_grid, dy=dy_grid
-            )
+            m = mask_distance(points_all, Xg, Yg, distance_threshold, int(closing_size), dist_map=dist_map)
             t1 = time.perf_counter()
             results["Distance-Based"] = {"mask": m, "time_mask": t1 - t0}
 
