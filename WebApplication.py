@@ -51,6 +51,9 @@ def _img_to_data_uri(img_path: Path) -> str:
 
 
 def inject_css():
+    # ============================================================
+    #            CSS PART (Embedded within Python string)
+    # ============================================================
     st.markdown(
         """
         <style>
@@ -238,6 +241,23 @@ def inject_css():
           padding: 10px 12px 12px 12px !important;
           background: var(--sb-body, rgba(255,255,255,0.06)) !important;
         }
+
+        .team-tooltip a{
+          color: #ffffff !important;
+          text-decoration: none !important;
+        }
+        .team-tooltip a:hover{
+          text-decoration: underline !important;
+        }
+
+        .team-tooltip{
+          pointer-events: none;
+          cursor: pointer;
+        }
+
+        .team-avatar-wrap:hover .team-tooltip{
+          pointer-events: auto;
+        }
             
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
@@ -251,6 +271,9 @@ def header_with_logo():
     col_left, col_right = st.columns([6, 1.5], vertical_alignment="center")
 
     with col_left:
+        # ============================================================
+        #           HTML PART (Embedded within Python string)
+        # ============================================================
         st.markdown(f"<h1 style='margin: 0 0 6px 0;'>{APP_TITLE}</h1>", unsafe_allow_html=True)
     
         st.markdown(
@@ -292,10 +315,12 @@ def _to_npy_bytes(arr):
     np.save(buf, arr)
     return buf.getvalue()
 
+
 def _to_npz_bytes(**kwargs):
     buf = io.BytesIO()
     np.savez_compressed(buf, **kwargs)
     return buf.getvalue()
+
 
 def _mask_csv_string(mask_u8):
     s = io.StringIO()
@@ -596,6 +621,9 @@ with st.sidebar:
     st.header("Welcome!")
     uploaded = st.file_uploader("Upload Your Data File (ASCII Format)")
 
+    # ============================================================
+    #     HTML PART (Div markers injected via Python st.markdown)
+    # ============================================================
     st.markdown('<div class="sb-marker sb-marker-grid"></div>', unsafe_allow_html=True)
     with st.expander("CNN Grid Construction and Interpolation", expanded=False):
         st.markdown(r"**Grid Resolution in X** ($n_x$)")
@@ -623,19 +651,13 @@ with st.sidebar:
     st.markdown('<div class="sb-marker sb-marker-dist"></div>', unsafe_allow_html=True)
     with st.expander("Distance-Based Method", expanded=False):
 
-        st.markdown(r"**Standard Threshold Parameter** ($\tau$)")
+        st.markdown(r"**Threshold Parameter** ($\tau$)")
         distance_threshold = st.number_input(
         "tau", min_value=0.0, value=0.01, step=0.0000001, format="%.6f",
         key="distance_threshold", label_visibility="collapsed"
         )
-        st.caption(r"Note: Setting $\tau=\min(\Delta x,\Delta y)$ is typical for the Standard approach.")
 
-        st.markdown(r"**Anisotropic Threshold Parameter** ($\tau_{an}$)")
-        distance_threshold_aniso = st.number_input(
-        "tau_aniso", min_value=0.0, value=1.0, step=0.1, format="%.4f",
-        key="distance_threshold_aniso", label_visibility="collapsed"
-        )
-        st.caption(r"Note: Setting $\tau_{an}=1$ is typical for the Anisotropic approach.")
+        st.caption(r"Note: Setting $\tau=\min(\Delta x,\Delta y)$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
 
         st.markdown(r"**Structuring Element Size** ($s$)")
         closing_size = st.number_input(
@@ -688,8 +710,7 @@ with st.sidebar:
         )
         st.caption("Note: $\\rho=1$ Is Typically Effective for Most Geometries and Does Not Require Tuning.")
 
-    run_distance = st.checkbox("Distance-Based Mask (Standard)", value=False)
-    run_distance_aniso = st.checkbox("Distance-Based Mask (Anisotropic)", value=False)
+    run_distance = st.checkbox("Distance-Based Mask", value=False)
     run_alpha_lib = st.checkbox("Classical Alpha-Shape Mask", value=False)
     run_alpha_custom = st.checkbox("Adaptive Alpha-Shape Mask", value=False)
     show_points = st.checkbox("Show Scattered Points on Plots", value=False)
@@ -777,20 +798,17 @@ if run_btn:
         t_shared0 = time.perf_counter()
 
         Xg, Yg, xmin, xmax, ymin, ymax = build_grid(x, y, nx=int(nx), ny=int(ny))
-        
-        # Calculate grid spacing for Anisotropic method
-        dx = (xmax - xmin) / (int(nx) - 1) if int(nx) > 1 else 1.0
-        dy = (ymax - ymin) / (int(ny) - 1) if int(ny) > 1 else 1.0
 
-        # Standard Euclidean pre-calculation
         tree = cKDTree(points_all)
         grid_points = np.column_stack((Xg.ravel(), Yg.ravel()))
         dist_to_pts, _ = tree.query(grid_points, k=1)
         dist_map = dist_to_pts.reshape(Xg.shape)
 
+
         dists_pts, _ = tree.query(points_all, k=2)
         mean_nn_dist = float(np.mean(dists_pts[:, 1]))
         r0 = float(r0_factor * mean_nn_dist)
+
 
         field_grids = {}
         if field_mode == "Use Constant Unit Field (Mask and Geometry Only)":
@@ -809,27 +827,14 @@ if run_btn:
         - **Shared Preprocessing Time (CNN Grid Generation, Distance Map Computation, Reference Radius Calculation, Interpolation):** {shared_time:.4f} s
         """)
 
+
         results = {}
 
         if run_distance:
             t0 = time.perf_counter()
             m = mask_distance(points_all, Xg, Yg, distance_threshold, int(closing_size), dist_map=dist_map)
             t1 = time.perf_counter()
-            results["Distance-Based (Standard)"] = {"mask": m, "time_mask": t1 - t0}
-
-        if run_distance_aniso:
-            t0 = time.perf_counter()
-            # Anisotropic Scaling
-            pts_aniso = points_all / np.array([dx, dy])
-            grid_pts_aniso = grid_points / np.array([dx, dy])
-            
-            tree_aniso = cKDTree(pts_aniso)
-            dist_to_pts_aniso, _ = tree_aniso.query(grid_pts_aniso, k=1)
-            dist_map_aniso = dist_to_pts_aniso.reshape(Xg.shape)
-            
-            m = mask_distance(points_all, Xg, Yg, distance_threshold_aniso, int(closing_size), dist_map=dist_map_aniso)
-            t1 = time.perf_counter()
-            results["Distance-Based (Anisotropic)"] = {"mask": m, "time_mask": t1 - t0}
+            results["Distance-Based"] = {"mask": m, "time_mask": t1 - t0}
 
         if run_alpha_lib:
             t0 = time.perf_counter()
@@ -847,7 +852,9 @@ if run_btn:
             st.error("No Method Selected.")
             st.stop()
 
+
         ref_mask = results["Classical Alpha-Shape"]["mask"] if "Classical Alpha-Shape" in results else None
+
 
         rows = []
         for name, res in results.items():
@@ -856,19 +863,22 @@ if run_btn:
             mask = res["mask"].astype(bool)
             mask_u8 = mask.astype(np.uint8)
 
+
             stats = compute_mask_stats(mask)
             pr = point_recall(mask, x, y, xmin, xmax, ymin, ymax, int(nx), int(ny))
-            gf, extra_cells = ghost_fraction(mask, dist_map, r0) # Note: Always uses standard dist_map and r0 for fair metric evaluation
+            gf, extra_cells = ghost_fraction(mask, dist_map, r0)
 
             if ref_mask is None or name == "Classical Alpha-Shape":
                 iou, prec, rec = (np.nan, np.nan, np.nan) if name != "Classical Alpha-Shape" else (1.0, 1.0, 1.0)
             else:
                 iou, prec, rec = compare_to_reference(mask, ref_mask)
 
+
             exports = {}
             exports["mask_u8"] = mask_u8
             exports["mask_npy"] = _to_npy_bytes(mask_u8)
             exports["mask_csv"] = _mask_csv_string(mask_u8)
+
 
             masked_fields = {}
             norm_info = {}
@@ -895,6 +905,7 @@ if run_btn:
 
             exports["masked_fields"] = masked_fields
             exports["masked_field_npy"] = {k: _to_npy_bytes(v) for k, v in masked_fields.items()}
+
 
             pack = {
                 "Xg": Xg.astype(np.float64),
@@ -1009,6 +1020,9 @@ if run_btn:
                     mime="application/octet-stream"
                 )
 
+        # ============================================================
+        #      HTML PART (Embedded formatting within Python string)
+        # ============================================================
         st.markdown(f"""
         Thank You for Using the CNN-Ready CFD Reconstruction Toolkit. If You Publish Any Results Obtained Using This Application, Please Do Cite Our Accompanying Paper:<br>
         **“Novel Distance-Based Masking and Adaptive α-Shape Methods for CNN-Ready Reconstruction of Arbitrary 2D CFD Flow Domains”**
